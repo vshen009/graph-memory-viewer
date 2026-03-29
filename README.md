@@ -129,6 +129,16 @@ npx http-server projects/graph-memory-viewer -p 8080
 
 ---
 
+## 数据隐私
+
+`data/graph.json` 包含来自 `graph-memory.db` 的真实对话记录（任务描述、执行步骤、结果等），**不会**被提交到 GitHub。
+
+`.gitignore` 已排除：
+- `data/graph.json` — 图数据（每次运行导出脚本后重新生成）
+- `data/*.log` — cron 日志
+
+如需分享图谱，请确保数据已脱敏，或仅分享空的 `graph.json` 模板。
+
 ## 故障排查
 
 **页面打不开**
