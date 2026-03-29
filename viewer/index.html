@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Memory Viewer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- vis-network 6.x -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+
+<!-- ── 顶部统计栏 ── -->
+<header id="header">
+  <span class="title">🕸 Graph Memory</span>
+
+  <div class="stat">
+    <span class="val" id="stat-messages">—</span>
+    <span class="lbl">Messages</span>
+  </div>
+  <div class="sep"></div>
+  <div class="stat">
+    <span class="val" id="stat-nodes">—</span>
+    <span class="lbl">Nodes</span>
+  </div>
+  <div class="sep"></div>
+  <div class="stat">
+    <span class="val" id="stat-edges">—</span>
+    <span class="lbl">Edges</span>
+  </div>
+  <div class="sep"></div>
+  <div class="stat">
+    <span class="val" id="stat-communities">—</span>
+    <span class="lbl">Communities</span>
+  </div>
+
+  <div id="refresh-time">
+    最后更新: <span id="updated-time">—</span>
+  </div>
+
+  <button id="pause-btn">⏸ 暂停</button>
+  <button id="force-btn">↻ 刷新</button>
+</header>
+
+<!-- ── 主区域 ── -->
+<div id="main">
+
+  <!-- 图谱画布 -->
+  <div id="network-panel">
+    <div id="network" style="width:100%;height:calc(100vh - 52px);"></div>
+
+    <div id="status-bar">加载中…</div>
+
+    <div class="hint">拖拽移动 · 滚轮缩放 · 点击节点查看详情</div>
+
+    <!-- 图例 -->
+    <div id="legend">
+      <div class="leg-title">节点类型</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#16a34a"></div> Task</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#2563eb"></div> Skill</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#ea580c"></div> Event</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#94a3b8"></div> Unknown</div>
+      <div class="leg-title" style="margin-top:8px">边类型</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#38bdf8;width:16px;height:3px;border-radius:0"></div> USED_SKILL</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#4ade80;width:16px;height:3px;border-radius:0"></div> SOLVED_BY</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#fb923c;width:16px;height:3px;border-radius:0"></div> REQUIRES</div>
+    </div>
+  </div>
+
+  <!-- 右侧详情面板 -->
+  <aside id="detail-panel" class="hidden">
+    <div class="panel-header">
+      <span class="node-type" id="detail-type">—</span>
+      <button class="close-btn" id="close-detail">×</button>
+    </div>
+
+    <h2 id="detail-name">—</h2>
+
+    <div class="section">
+      <div class="section-title">描述</div>
+      <p id="detail-desc">—</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">基本信息</div>
+      <div class="badge-row">
+        <span class="badge green">PR: <span id="detail-pagerank">—</span></span>
+        <span class="badge blue">度数: <span id="detail-degree">—</span></span>
+        <span class="badge">关联边: <span id="detail-edges-count">—</span></span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Community</div>
+      <p id="detail-community">—</p>
+    </div>
+
+    <button id="raw-toggle">▸ 查看原始数据</button>
+    <div id="raw-section">
+      <pre id="raw-pre">{}</pre>
+    </div>
+  </aside>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+  // 关闭详情面板
+  document.getElementById('close-detail').addEventListener('click', () => {
+    document.getElementById('detail-panel').classList.add('hidden');
+  });
+</script>
+</body>
+</html>

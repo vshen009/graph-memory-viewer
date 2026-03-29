@@ -1,0 +1,292 @@
+/* styles.css – graph-memory-viewer */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f172a;
+  --surface:   #1e293b;
+  --surface2:  #334155;
+  --border:    #475569;
+  --text:      #e2e8f0;
+  --text-dim:  #94a3b8;
+  --accent:    #38bdf8;
+  --green:     #16a34a;
+  --blue:      #2563eb;
+  --orange:    #ea580c;
+  --gray:      #94a3b8;
+  --font:      system-ui, -apple-system, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* ── 顶部统计栏 ── */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 28px;
+  z-index: 100;
+}
+
+#header .title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+#header .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+#header .stat .val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+#header .stat .lbl {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#header .sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+}
+
+#refresh-time {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+#refresh-time span { color: var(--accent); }
+
+#pause-btn, #force-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+#pause-btn:hover, #force-btn:hover { background: var(--border); }
+#pause-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+
+/* ── 主区域：画布 + 详情面板 ── */
+#main {
+  display: flex;
+  height: calc(100vh - 52px);
+  margin-top: 52px;
+}
+
+#network-panel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+#network-panel .hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 41, 59, 0.82);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* ── 右侧详情面板 ── */
+#detail-panel {
+  width: 300px;
+  min-width: 300px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#detail-panel.hidden { display: none; }
+
+#detail-panel .panel-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#detail-panel .panel-header .node-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+#detail-panel .panel-header .close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+#detail-panel .panel-header .close-btn:hover { color: var(--text); }
+
+#detail-panel h2 {
+  padding: 12px 16px 6px;
+  font-size: 16px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+#detail-panel .section {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+#detail-panel .section:last-child { border-bottom: none; }
+
+#detail-panel .section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+#detail-panel .section p {
+  color: var(--text);
+  line-height: 1.55;
+  font-size: 13px;
+  word-break: break-word;
+}
+#detail-panel .section code {
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--accent);
+}
+#detail-panel .badge-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+#detail-panel .badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+#detail-panel .badge.green { background: #14532d; color: #4ade80; border-color: #166534; }
+#detail-panel .badge.blue  { background: #1e3a8a; color: #60a5fa; border-color: #1d4ed8; }
+#detail-panel .badge.orange{ background: #7c2d12; color: #fb923c; border-color: #c2410c; }
+
+#raw-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  margin: 4px 16px 8px;
+  text-decoration: underline;
+}
+#raw-toggle:hover { opacity: 0.8; }
+
+#raw-section {
+  display: none;
+  padding: 0 16px 12px;
+}
+#raw-section.visible { display: block; }
+#raw-section pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* ── 无数据 / 加载状态 ── */
+#status-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 41, 59, 0.88);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+#status-bar.fade { opacity: 0; }
+
+/* ── 图例 ── */
+#legend {
+  position: absolute;
+  bottom: 42px;
+  left: 12px;
+  background: rgba(30, 41, 59, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  z-index: 10;
+}
+#legend .leg-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+#legend .leg-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+  color: var(--text-dim);
+}
+#legend .leg-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
