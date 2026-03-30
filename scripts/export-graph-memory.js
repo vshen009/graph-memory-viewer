@@ -174,7 +174,7 @@ function exportGraph({ dbPath, outputPath }) {
 
 function main() {
   const args = process.argv.slice(2);
-  let dbPath    = '/home/trinity/.openclaw/graph-memory.db';
+  let dbPath    = process.env.GM_DB || '/home/trinity/.openclaw/graph-memory.db';
   let outputPath = path.join(__dirname, '..', 'data', 'graph.json');
 
   for (let i = 0; i < args.length; i++) {

@@ -553,7 +553,8 @@ document.getElementById('delete-confirm').addEventListener('click', async () => 
   document.getElementById('delete-modal').classList.add('hidden');
 
   try {
-    const res = await fetch(`http://localhost:7824/api/nodes/${nodeId}`, { method: 'DELETE' });
+    const apiHost = document.location.hostname;
+    const res = await fetch(`http://${apiHost}:7824/api/nodes/${nodeId}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok || !json.ok) throw new Error(json.error || 'Delete failed');
 

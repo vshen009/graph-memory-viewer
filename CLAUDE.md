@@ -45,6 +45,7 @@ graph-memory.db → export-graph-memory.js → data/graph.json → viewer (5s po
 ```bash
 node scripts/export-graph-memory.js
 # Options: --db <path> (default ~/.openclaw/graph-memory.db), --output <path>
+# 也支持 GM_DB 环境变量
 ```
 
 **Serve the viewer (required — can't open via file://):**
@@ -61,7 +62,7 @@ python3 scripts/api_server.py
 ### Node Deletion Flow
 
 1. User clicks delete in the viewer detail panel
-2. `viewer/app.js` calls `DELETE http://192.168.100.137:7824/api/nodes/<nodeId>`
+2. `viewer/app.js` calls `DELETE http://<hostname>:7824/api/nodes/<nodeId>` (hostname 来自浏览器当前访问地址)
 3. `api_server.py` invokes `scripts/delete_node.py <nodeId>`
 4. `delete_node.py` deletes the node + its edges from SQLite, then re-exports graph.json
 5. The viewer's 5-second poll picks up the updated graph.json
