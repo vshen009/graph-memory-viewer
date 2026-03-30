@@ -34,6 +34,13 @@ let isPaused       = false;
 let pollTimer      = null;
 let physicsTimer   = null;
 
+// v2 状态机
+let neighborMap  = new Map();   // nodeId → Set<neighborId>
+let fuse          = null;        // Fuse.js instance
+let filterState   = { search: '', type: 'all' };
+let highlightState = { nodeId: null, neighborIds: [] };
+let searchDebounce = null;
+
 // 暴露给外部（测试用）
 window._graph = { getNetwork: () => network, getGraphData: () => graphData };
 
@@ -46,10 +53,13 @@ const $stats = {
   messages:   document.getElementById('stat-messages'),
   updated:   document.getElementById('updated-time'),
 };
-const $detail    = document.getElementById('detail-panel');
-const $pauseBtn  = document.getElementById('pause-btn');
-const $forceBtn  = document.getElementById('force-btn');
-const $statusBar = document.getElementById('status-bar');
+const $detail     = document.getElementById('detail-panel');
+const $pauseBtn   = document.getElementById('pause-btn');
+const $forceBtn   = document.getElementById('force-btn');
+const $statusBar  = document.getElementById('status-bar');
+const $searchBox  = document.getElementById('search-box');
+const $searchClear= document.getElementById('search-clear');
+const $typeFilter = document.getElementById('type-filter');
 
 // ── 工具 ─────────────────────────────────────────────────────────────────────
 
@@ -64,7 +74,100 @@ function edgeColor(label) {
 function fmtTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+  if (isNaN(d.getTime())) return '—';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+// ── v2: Fuse.js ───────────────────────────────────────────────────────────────
+
+function initFuse(nodes) {
+  if (typeof Fuse !== 'undefined') {
+    fuse = new Fuse(nodes, {
+      keys: ['label'],
+      threshold: 0.4,
+      includeMatches: false,
+      minMatchCharLength: 1,
+    });
+  } else {
+    // CDN 不可达，降级到 substring 匹配
+    fuse = {
+      search(q) {
+        const l = q.toLowerCase();
+        return nodes
+          .filter(n => n.label.toLowerCase().includes(l))
+          .map(item => ({ item }));
+      },
+    };
+  }
+}
+
+// ── v2: 邻居查找 ─────────────────────────────────────────────────────────────
+
+function buildNeighborMap(edges) {
+  neighborMap = new Map();
+  edges.forEach(e => {
+    if (!neighborMap.has(e.source)) neighborMap.set(e.source, new Set());
+    if (!neighborMap.has(e.target)) neighborMap.set(e.target, new Set());
+    neighborMap.get(e.source).add(e.target);
+    neighborMap.get(e.target).add(e.source);
+  });
+}
+
+function getNeighborIds(nodeId) {
+  return neighborMap.get(nodeId) ?? new Set();
+}
+
+// ── v2: 状态渲染 ─────────────────────────────────────────────────────────────
+
+function applyVisuals(fs = filterState, hs = highlightState) {
+  if (!network || !graphData) return;
+
+  const visNodes = network.body.data.nodes;
+
+  // 收集匹配节点
+  let matchedIds = new Set();
+  if (fs.search.trim()) {
+    const results = fuse.search(fs.search.trim());
+    matchedIds = new Set(results.map(r => r.item.id));
+  }
+
+  const typeVal = fs.type === 'all' ? null : fs.type;
+  const hsNodeId = hs.nodeId;
+  const hsNeighborIds = new Set(hs.neighborIds);
+
+  const updates = [];
+  visNodes.forEach(n => {
+    const nodeData = n._node ?? {};
+    const isHighlighted = hsNodeId !== null && (n.id === hsNodeId || hsNeighborIds.has(n.id));
+    const isFiltered = fs.search.trim() && !matchedIds.has(n.id);
+    const isTypeFiltered = typeVal !== null && (nodeData.type ?? '').toLowerCase() !== typeVal;
+
+    // 高亮状态优先：被点节点 + 邻居永远显示
+    // 否则按 filterState 决定
+    const dimmed = !isHighlighted && (isFiltered || isTypeFiltered);
+
+    updates.push({
+      id: n.id,
+      opacity: dimmed ? 0.08 : 1,
+    });
+  });
+
+  visNodes.update(updates);
+  updateStatusBar(fs, hs, matchedIds.size);
+}
+
+function updateStatusBar(fs, hs, matchedCount) {
+  if (hs.nodeId !== null) {
+    const node = graphData?.nodes?.find(n => n.id === hs.nodeId);
+    $statusBar.textContent = `🔵 高亮: ${node?.label ?? hs.nodeId} · ${hs.neighborIds.length} 个邻居`;
+  } else if (fs.search.trim()) {
+    $statusBar.textContent = `🔍 筛选: '${fs.search}' · ${matchedCount} 个匹配节点`;
+  } else if (fs.type !== 'all') {
+    const labels = { task: '任务', skill: '技能', event: '事件' };
+    $statusBar.textContent = `🔍 筛选: ${labels[fs.type] ?? fs.type}`;
+  } else {
+    $statusBar.textContent = '● 实时监控中';
+  }
 }
 
 function flashStatus(msg, duration = 2500) {
@@ -198,8 +301,25 @@ function initNetwork(visData) {
 
   network.on('click', params => {
     if (params.nodes.length === 1) {
-      showNodeDetail(params.nodes[0]);
+      const clickedId = params.nodes[0];
+      if (highlightState.nodeId === clickedId) {
+        // 再次点击同一节点 → 清除高亮
+        highlightState = { nodeId: null, neighborIds: [] };
+        applyVisuals();
+        hideDetail();
+      } else {
+        // 高亮该节点及其一阶邻居
+        highlightState = {
+          nodeId: clickedId,
+          neighborIds: Array.from(getNeighborIds(clickedId)),
+        };
+        applyVisuals();
+        showNodeDetail(clickedId);
+      }
     } else {
+      // 点击空白区域 → 清除高亮
+      highlightState = { nodeId: null, neighborIds: [] };
+      applyVisuals();
       hideDetail();
     }
   });
@@ -230,6 +350,13 @@ async function fetchGraph() {
   graphData = fresh;
   updateStats(fresh.meta);
 
+  // v2: 重建 neighborMap（O edges）和 fuse 实例
+  buildNeighborMap(fresh.edges ?? []);
+  initFuse(fresh.nodes ?? []);
+
+  // 数据刷新时清除高亮状态（简化实现）
+  highlightState = { nodeId: null, neighborIds: [] };
+
   const ts = document.getElementById('updated-time');
   if (ts) ts.textContent = fmtTime(fresh.meta?.generatedAt);
 
@@ -242,6 +369,8 @@ async function fetchGraph() {
     } else {
       try {
         network.setData(vd);
+        // v2: 重绘后重新应用过滤/高亮状态
+        applyVisuals();
         // 重启物理引擎（重绘后重新稳定）
         network.setOptions({ physics: { enabled: true, stabilization: { iterations: 60 } } });
         clearTimeout(physicsTimer);
@@ -265,6 +394,14 @@ async function fetchGraph() {
 
 function startPolling() {
   pollTimer = setInterval(fetchGraph, CONFIG.pollInterval);
+}
+
+// 强制重新加载（不受 isPaused 影响，用于删除后刷新）
+async function reloadGraph() {
+  const wasPaused = isPaused;
+  isPaused = false;
+  await fetchGraph();
+  isPaused = wasPaused;
 }
 
 // ── 顶部统计栏 ────────────────────────────────────────────────────────────────
@@ -312,6 +449,11 @@ function updateNodeDetail(node) {
   document.getElementById('detail-degree').textContent   = node.degree ?? connectedEdges.length;
   document.getElementById('detail-edges-count').textContent = connectedEdges.length;
 
+  const createdAt = node.raw?.createdAt ?? node.createdAt ?? null;
+  const updatedAt = node.raw?.updatedAt ?? node.updatedAt ?? null;
+  document.getElementById('detail-created').textContent = fmtTime(createdAt);
+  document.getElementById('detail-updated').textContent = fmtTime(updatedAt);
+
   const rawPre = document.getElementById('raw-pre');
   rawPre.textContent = JSON.stringify(node.raw ?? node, null, 2);
 }
@@ -336,11 +478,56 @@ $pauseBtn.addEventListener('click', () => {
   }
 });
 
-$forceBtn.addEventListener('click', () => fetchGraph());
+$forceBtn.addEventListener('click', () => reloadGraph());
 
 document.getElementById('raw-toggle')?.addEventListener('click', () => {
   document.getElementById('raw-section')?.classList.toggle('visible');
 });
+
+// ── v2: 搜索 & 筛选事件 ───────────────────────────────────────────────────────
+
+function onSearchInput() {
+  clearTimeout(searchDebounce);
+  const q = $searchBox.value;
+  $searchClear.hidden = !q;
+  searchDebounce = setTimeout(() => {
+    filterState.search = q;
+    highlightState = { nodeId: null, neighborIds: [] };
+    applyVisuals();
+  }, 200);
+}
+
+function onClearSearch() {
+  $searchBox.value = '';
+  $searchClear.hidden = true;
+  filterState.search = '';
+  highlightState = { nodeId: null, neighborIds: [] };
+  applyVisuals();
+}
+
+function onTypeChange() {
+  filterState.type = $typeFilter.value;
+  highlightState = { nodeId: null, neighborIds: [] };
+  applyVisuals();
+}
+
+function onSearchKeydown(e) {
+  if (e.key === 'Escape') {
+    if ($searchBox.value) {
+      onClearSearch();
+    } else {
+      // 搜索框已空 → 清除高亮，还原 filterState
+      highlightState = { nodeId: null, neighborIds: [] };
+      applyVisuals();
+    }
+    e.target.blur();
+  }
+}
+
+$searchBox.addEventListener('input', onSearchInput);
+$searchBox.addEventListener('keydown', onSearchKeydown);
+$searchClear.addEventListener('click', onClearSearch);
+$typeFilter.addEventListener('change', onTypeChange);
 
 // ── 删除功能 ────────────────────────────────────────────────────────────────
 
@@ -366,14 +553,15 @@ document.getElementById('delete-confirm').addEventListener('click', async () => 
   document.getElementById('delete-modal').classList.add('hidden');
 
   try {
-    const res = await fetch(`http://127.0.0.1:7824/api/nodes/${nodeId}`, { method: 'DELETE' });
+    const res = await fetch(`http://192.168.100.137:7824/api/nodes/${nodeId}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok || !json.ok) throw new Error(json.error || 'Delete failed');
 
     flashStatus(`已从数据库删除: ${nodeId}`);
 
-    // 重新加载完整图谱数据
-    await loadGraphData();
+    // 重新加载完整图谱数据（filterState 保留，highlightState 清除）
+    highlightState = { nodeId: null, neighborIds: [] };
+    await reloadGraph();
   } catch (err) {
     flashStatus(`删除失败: ${err.message}`);
   } finally {

@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <!-- vis-network 6.x -->
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Fuse.js 7.x -->
+  <script src="https://unpkg.com/fuse.js@7.0.0/dist/fuse.min.js"></script>
 </head>
 <body>
 
@@ -40,6 +42,27 @@
 
   <button id="pause-btn">⏸ 暂停</button>
   <button id="force-btn">↻ 刷新</button>
+
+  <div id="search-row">
+    <div class="search-wrap">
+      <input
+        id="search-box"
+        type="search"
+        placeholder="搜索节点…"
+        aria-label="搜索节点名称"
+        aria-controls="network"
+        autocomplete="off"
+      />
+      <button id="search-clear" class="search-clear" aria-label="清除搜索" hidden>×</button>
+    </div>
+    <label for="type-filter" class="sr-only">节点类型筛选</label>
+    <select id="type-filter" aria-label="节点类型筛选">
+      <option value="all">全部</option>
+      <option value="task">任务</option>
+      <option value="skill">技能</option>
+      <option value="event">事件</option>
+    </select>
+  </div>
 </header>
 
 <!-- ── 主区域 ── -->
@@ -49,7 +72,7 @@
   <div id="network-panel">
     <div id="network" style="width:100%;height:calc(100vh - 52px);"></div>
 
-    <div id="status-bar">加载中…</div>
+    <div id="status-bar" aria-live="polite">加载中…</div>
 
     <div class="hint">拖拽移动 · 滚轮缩放 · 点击节点查看详情</div>
 
@@ -93,6 +116,18 @@
     <div class="section">
       <div class="section-title">Community</div>
       <p id="detail-community">—</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">时间</div>
+      <div class="time-row">
+        <span class="time-label">创建</span>
+        <span class="time-value" id="detail-created">—</span>
+      </div>
+      <div class="time-row">
+        <span class="time-label">更新</span>
+        <span class="time-value" id="detail-updated">—</span>
+      </div>
     </div>
 
     <button id="raw-toggle">▸ 查看原始数据</button>
