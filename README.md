@@ -25,7 +25,9 @@ projects/graph-memory-viewer/
 ├── README.md
 ├── TECH-SPEC-v1.md
 ├── scripts/
-│   └── export-graph-memory.js   # 数据库 → JSON 导出脚本
+│   ├── export-graph-memory.js   # 数据库 → JSON 导出脚本
+│   ├── delete_node.py           # 节点删除脚本（从数据库真正删除）
+│   └── api_server.py            # 删除 API 服务 (:7824)
 ├── data/
 │   └── graph.json               # 导出的图数据（首次运行后生成）
 └── viewer/
@@ -104,15 +106,13 @@ npx http-server projects/graph-memory-viewer -p 8080
 - ✅ 字段映射层（数据库原始列名不暴露给前端）
 - ✅ 节点 hover 显示描述 tooltip
 - ✅ 边 label 显示（hover 或选中时）
+- ✅ **节点删除**（选中节点 → 详情面板底部删除 → 确认弹窗 → 从数据库永久删除）
 
 ### 未实现（v2 规划）
 
-- ⬜ 节点搜索框
-- ⬜ 按 type 筛选节点
-- ⬜ 按 community 筛选/高亮
+- ⬜ 节点搜索框 + 按 type 筛选
 - ⬜ 高亮某节点一阶邻居
 - ⬜ 点击边显示关系详情
-- ⬜ Community 颜色映射（目前 communities 数据已导出但未在图中按 community 上色）
 - ⬜ 增量更新（目前每次刷新完全重绘）
 - ⬜ 节点拖拽后保持位置
 - ⬜ 导出图片
@@ -123,9 +123,7 @@ npx http-server projects/graph-memory-viewer -p 8080
 
 1. **定时导出**：将 `node scripts/export-graph-memory.js` 加入 `cron 0 * * * *`（每小时更新一次 graph.json），viewer 的 5 秒轮询会自动感知变化
 2. **升级到 HTTP API**：如果 graph.json 更新频繁，可将导出脚本改为轻量 HTTP 服务，避免文件 IO
-3. **Community 视图**：当前 communities 已导出但未在图中反映（节点未按 community 上色），可后续做 group 视图
-4. **搜索/筛选**：加一个节点搜索框，按名称过滤可见节点
-5. **邻居高亮**：点击节点后高亮其一阶邻居，其余节点暗化
+3. **邻居高亮**：点击节点后高亮其一阶邻居，其余节点暗化，提升节点关联可读性
 
 ---
 

@@ -10,12 +10,14 @@
 const CONFIG = {
   dataUrl:      '../data/graph.json',
   pollInterval: 5_000,
+  colorMode:    'community',  // 'community' | 'type'
   typeColors: {
     task:    '#16a34a',
     skill:   '#2563eb',
     event:   '#ea580c',
     unknown: '#94a3b8',
   },
+  communityColorMap: {},   // 运行时填充
   edgeTypeColors: {
     USED_SKILL:    '#38bdf8',
     SOLVED_BY:     '#4ade80',
@@ -80,15 +82,27 @@ function flashStatus(msg, duration = 2500) {
 // ── vis-network 数据转换 ─────────────────────────────────────────────────────
 
 function buildVisData(data) {
+  // 建立 communityId → color 的映射
+  if (data.communities) {
+    CONFIG.communityColorMap = {};
+    data.communities.forEach(c => {
+      CONFIG.communityColorMap[c.id] = c.color || '#94a3b8';
+    });
+  }
+
+  const nodeColor = CONFIG.colorMode === 'community'
+    ? n => CONFIG.communityColorMap[n.communityId] ?? '#94a3b8'
+    : n => CONFIG.typeColors[n.type?.toLowerCase()] ?? CONFIG.typeColors.unknown;
+
   const nodes = data.nodes.map(n => ({
     id:     n.id,
     label:  n.label,
     title:  n.description || n.label,
     color: {
-      background: nodeColor(n.type),
-      border:     nodeColor(n.type),
-      highlight: { background: '#fff', border: nodeColor(n.type) },
-      hover:     { background: nodeColor(n.type), border: '#fff' },
+      background: nodeColor(n),
+      border:     nodeColor(n),
+      highlight: { background: '#fff', border: nodeColor(n) },
+      hover:     { background: nodeColor(n), border: '#fff' },
     },
     size:  Math.max(12, Math.min(40, 12 + (n.pagerank ?? 0) * 120)),
     font:  { color: '#e2e8f0', size: 12, face: 'system-ui' },
@@ -273,7 +287,7 @@ function showNodeDetail(nodeId) {
 }
 
 function updateNodeDetail(node) {
-  const typeColor = nodeColor(node.type);
+  const typeColor = CONFIG.typeColors[node.type?.toLowerCase()] ?? CONFIG.typeColors.unknown;
   const typeLabel = (node.type ?? 'unknown').toUpperCase();
 
   const connectedEdges = graphData?.edges?.filter(
@@ -346,25 +360,19 @@ document.getElementById('delete-confirm').addEventListener('click', async () => 
 
   document.getElementById('delete-modal').classList.add('hidden');
 
-  // 从本地数据中移除节点（临时，后续接后端 API）
-  if (graphData) {
-    graphData.nodes = graphData.nodes.filter(n => n.id !== nodeId);
-    graphData.edges = graphData.edges.filter(e => e.source !== nodeId && e.target !== nodeId);
-  }
+  try {
+    const res = await fetch(`http://127.0.0.1:7824/api/nodes/${nodeId}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json.error || 'Delete failed');
 
-  hideDetail();
-  flashStatus(`已删除节点: ${nodeId}`);
+    flashStatus(`已从数据库删除: ${nodeId}`);
 
-  // 重新渲染图谱
-  if (graphData) {
-    const vd = buildVisData(graphData);
-    if (network) {
-      network.setData(vd);
-      network.setOptions({ physics: { enabled: true, stabilization: { iterations: 30 } } });
-      clearTimeout(physicsTimer);
-      physicsTimer = setTimeout(disablePhysics, 4000);
-    }
-    updateStats(graphData.meta);
+    // 重新加载完整图谱数据
+    await loadGraphData();
+  } catch (err) {
+    flashStatus(`删除失败: ${err.message}`);
+  } finally {
+    hideDetail();
   }
 
   _pendingDeleteId = null;
