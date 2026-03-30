@@ -99,7 +99,25 @@
     <div id="raw-section">
       <pre id="raw-pre">{}</pre>
     </div>
+
+    <div class="panel-footer">
+      <button id="edit-btn" class="btn-secondary">✏️ 编辑</button>
+      <button id="delete-btn" class="btn-danger">🗑️ 删除</button>
+    </div>
   </aside>
+
+  <!-- 删除确认弹窗 -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">⚠️ 确认删除</div>
+      <p>确定要删除节点：<strong id="delete-node-name"></strong> ？</p>
+      <p class="modal-hint">删除后不可恢复。</p>
+      <div class="modal-footer">
+        <button id="delete-cancel" class="btn-secondary">取消</button>
+        <button id="delete-confirm" class="btn-danger">确认删除</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 

@@ -32,6 +32,9 @@ let isPaused       = false;
 let pollTimer      = null;
 let physicsTimer   = null;
 
+// 暴露给外部（测试用）
+window._graph = { getNetwork: () => network, getGraphData: () => graphData };
+
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
 const $stats = {
@@ -318,6 +321,53 @@ $forceBtn.addEventListener('click', () => fetchGraph());
 
 document.getElementById('raw-toggle')?.addEventListener('click', () => {
   document.getElementById('raw-section')?.classList.toggle('visible');
+});
+
+// ── 删除功能 ────────────────────────────────────────────────────────────────
+
+let _pendingDeleteId = null;
+
+document.getElementById('delete-btn').addEventListener('click', () => {
+  if (!selectedNodeId) return;
+  const node = graphData?.nodes?.find(n => n.id === selectedNodeId);
+  document.getElementById('delete-node-name').textContent = node?.label ?? selectedNodeId;
+  document.getElementById('delete-modal').classList.remove('hidden');
+  _pendingDeleteId = selectedNodeId;
+});
+
+document.getElementById('delete-cancel').addEventListener('click', () => {
+  document.getElementById('delete-modal').classList.add('hidden');
+  _pendingDeleteId = null;
+});
+
+document.getElementById('delete-confirm').addEventListener('click', async () => {
+  const nodeId = _pendingDeleteId;
+  if (!nodeId) return;
+
+  document.getElementById('delete-modal').classList.add('hidden');
+
+  // 从本地数据中移除节点（临时，后续接后端 API）
+  if (graphData) {
+    graphData.nodes = graphData.nodes.filter(n => n.id !== nodeId);
+    graphData.edges = graphData.edges.filter(e => e.source !== nodeId && e.target !== nodeId);
+  }
+
+  hideDetail();
+  flashStatus(`已删除节点: ${nodeId}`);
+
+  // 重新渲染图谱
+  if (graphData) {
+    const vd = buildVisData(graphData);
+    if (network) {
+      network.setData(vd);
+      network.setOptions({ physics: { enabled: true, stabilization: { iterations: 30 } } });
+      clearTimeout(physicsTimer);
+      physicsTimer = setTimeout(disablePhysics, 4000);
+    }
+    updateStats(graphData.meta);
+  }
+
+  _pendingDeleteId = null;
 });
 
 // ── 启动 ─────────────────────────────────────────────────────────────────────
