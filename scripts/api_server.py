@@ -48,7 +48,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass  # 安静日志
 
     def _send_cors_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "http://192.168.100.137:8080")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
