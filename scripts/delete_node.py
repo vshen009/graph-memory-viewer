@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """从知识图谱数据库真正删除一个节点"""
 import sys, sqlite3, json, os
+from datetime import datetime
 
 DB_PATH = "/home/trinity/.openclaw/graph-memory.db"
 GRAPH_JSON = os.path.join(os.path.dirname(__file__), "../data/graph.json")
@@ -72,6 +73,13 @@ def export_graph():
         "communities": [
             {**dict(c)} for c in communities
         ],
+        "meta": {
+            "nodeCount":      len(nodes),
+            "edgeCount":      len(edges),
+            "communityCount": len(communities),
+            "messageCount":   0,
+            "generatedAt":    datetime.now().isoformat(),
+        },
     }
 
     with open(GRAPH_JSON, "w", encoding="utf-8") as f:

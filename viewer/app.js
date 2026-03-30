@@ -10,7 +10,7 @@
 const CONFIG = {
   dataUrl:      '../data/graph.json',
   pollInterval: 5_000,
-  colorMode:    'community',  // 'community' | 'type'
+  colorMode:    'type',  // 'community' | 'type'（节点着色优先用 type，严格按 Task/Skill/Event/Unknown 着色）
   typeColors: {
     task:    '#16a34a',
     skill:   '#2563eb',
@@ -116,7 +116,7 @@ function buildVisData(data) {
     from:  e.source,   // DB 导出字段是 source/target
     to:    e.target,
     label: e.label,
-    color: { color: edgeColor(e.label), highlight: '#38bdf8' },
+    color: { color: edgeColor(e.label), highlight: edgeColor(e.label) },
     arrows: 'to',
     smooth: { type: 'continuous' },
     width:  1.2,
@@ -270,10 +270,15 @@ function startPolling() {
 // ── 顶部统计栏 ────────────────────────────────────────────────────────────────
 
 function updateStats(meta) {
-  if ($stats.nodes)      $stats.nodes.textContent      = meta?.nodeCount ?? 0;
-  if ($stats.edges)      $stats.edges.textContent      = meta?.edgeCount ?? 0;
-  if ($stats.communities) $stats.communities.textContent = meta?.communityCount ?? 0;
-  if ($stats.messages)   $stats.messages.textContent   = meta?.messageCount ?? 0;
+  // fallback：从 graphData 直接计数（防止 meta 字段缺失时全为 0）
+  const nodes = graphData?.nodes ?? [];
+  const edges = graphData?.edges ?? [];
+  const communities = graphData?.communities ?? [];
+
+  if ($stats.nodes)      $stats.nodes.textContent      = meta?.nodeCount      ?? nodes.length;
+  if ($stats.edges)      $stats.edges.textContent      = meta?.edgeCount      ?? edges.length;
+  if ($stats.communities) $stats.communities.textContent = meta?.communityCount ?? communities.length;
+  if ($stats.messages)   $stats.messages.textContent   = meta?.messageCount   ?? 0;
 }
 
 // ── 右侧详情面板 ──────────────────────────────────────────────────────────────

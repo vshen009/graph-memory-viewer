@@ -119,6 +119,27 @@ npx http-server projects/graph-memory-viewer -p 8080
 
 ---
 
+## 使用规范
+
+### 与 AGENTS.md / MEMORY.md 的协同
+
+`graph-memory` 是**主记忆库**（持久化 + 语义检索），AGENTS.md 和 MEMORY.md 中的记忆管理规范需与其保持一致：
+
+- **检索**：涉及个人偏好、历史决策、过往事件 → `gm_search` 优先
+- **写入**：新经验 / 案例 → `gm_record` 入知识图谱，`memory/lessons.md` 保留详细文字备份
+- AGENTS.md 和 MEMORY.md 的记忆管理章节应同步更新，避免规则打架
+
+### 避免多记忆插件同时启用
+
+graph-memory 与 OpenClaw 其他记忆类插件（mem0、Flock Memory 等）**不可同时使用**，原因：
+
+- 多套记忆系统并行 → 记忆分散，检索结果不完整，存储冗余
+- 经验写入规则不一致 → 知识图谱与 lessons.md 脱节
+
+**建议**：仅保留 `graph-memory`，卸载或禁用其他记忆类插件。
+
+---
+
 ## 后续建议
 
 1. **定时导出**：将 `node scripts/export-graph-memory.js` 加入 `cron 0 * * * *`（每小时更新一次 graph.json），viewer 的 5 秒轮询会自动感知变化
