@@ -1,6 +1,7 @@
 # 数据目录 - 不提交真实数据
 data/graph.json
 data/*.log
+graph-memory.db
 
 # Node.js
 node_modules/
@@ -8,3 +9,4 @@ node_modules/
 # 系统文件
 .DS_Store
 *.swp
+.gstack/

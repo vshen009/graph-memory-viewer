@@ -28,7 +28,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # 调用删除脚本
         result = subprocess.run(
             [sys.executable, str(DELETE_SCRIPT), node_id],
-            capture_output=True, text=True
+            capture_output=True, text=True,
+            env=os.environ.copy()
         )
 
         if result.returncode == 0:

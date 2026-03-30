@@ -3,10 +3,11 @@
 import sys, sqlite3, json, os
 from datetime import datetime
 
-DB_PATH = "/home/trinity/.openclaw/graph-memory.db"
+DB_PATH = os.environ.get("GM_DB", "/home/trinity/.openclaw/graph-memory.db")
 GRAPH_JSON = os.path.join(os.path.dirname(__file__), "../data/graph.json")
 
 def delete_node(node_id):
+    print(f"[delete_node] GM_DB={os.environ.get('GM_DB','NOT SET')}, DB_PATH={DB_PATH}", file=sys.stderr)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
